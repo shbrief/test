@@ -8,8 +8,13 @@ on:
       - completed
     branches: [ main ]
   
-  # Keep manual trigger for testing
+  # Keep manual trigger for testing with optional folder name input
   workflow_dispatch:
+    inputs:
+      folder_name:
+        description: 'Folder name for TSV files (e.g., Smith_2023). Leave empty to auto-detect from issue.'
+        required: false
+        type: string
 
 jobs:
   create-tsv-files:
@@ -26,6 +31,17 @@ jobs:
       uses: actions/github-script@v7
       with:
         script: |
+          // Check if folder name was provided manually
+          const manualFolderName = '${{ github.event.inputs.folder_name }}';
+          if (manualFolderName && manualFolderName.trim()) {
+            console.log(`Using manually provided folder name: ${manualFolderName}`);
+            core.setOutput('folder_name', manualFolderName.trim());
+            return;
+          }
+          
+          // Auto-detect from issue (existing logic)
+          console.log('No manual folder name provided, attempting to auto-detect from issue...');
+          
           // Get the issue that triggered the original workflow
           const issue = await github.rest.issues.get({
             owner: context.repo.owner,
@@ -46,8 +62,7 @@ jobs:
           
           if (!issue?.data) {
             console.log('No issue found, using default values');
-            core.setOutput('author_lastname', 'Unknown');
-            core.setOutput('year', new Date().getFullYear());
+            core.setOutput('folder_name', `Unknown_${new Date().getFullYear()}`);
             return;
           }
           
@@ -82,18 +97,18 @@ jobs:
             }
           }
           
-          console.log(`Author: ${author}, Year: ${year}`);
-          core.setOutput('author_lastname', author);
-          core.setOutput('year', year);
+          const folderName = `${author}_${year}`;
+          console.log(`Auto-detected folder name: ${folderName}`);
+          core.setOutput('folder_name', folderName);
       
     - name: Create directory and TSV files
       run: |
-        # Create directory name using author's last name and year
-        AUTHOR_LASTNAME="${{ steps.get-metadata.outputs.author_lastname }}"
-        YEAR="${{ steps.get-metadata.outputs.year }}"
-        TSV_DIR="data/${AUTHOR_LASTNAME}_${YEAR}"
+        # Use the folder name from metadata step
+        FOLDER_NAME="${{ steps.get-metadata.outputs.folder_name }}"
+        TSV_DIR="data/${FOLDER_NAME}"
         
         echo "Creating directory: $TSV_DIR"
+        echo "Folder name: $FOLDER_NAME"
         
         # Create the directory if it doesn't exist
         mkdir -p "$TSV_DIR"
