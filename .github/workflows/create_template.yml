@@ -19,8 +19,8 @@ on:
 jobs:
   create-tsv-files:
     runs-on: ubuntu-latest
-    # Only run if the triggering workflow succeeded
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # Only run if manually triggered OR if the triggering workflow succeeded
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     
     steps:
     - name: Checkout repository
@@ -105,7 +105,7 @@ jobs:
       run: |
         # Use the folder name from metadata step
         FOLDER_NAME="${{ steps.get-metadata.outputs.folder_name }}"
-        TSV_DIR="data/${FOLDER_NAME}"
+        TSV_DIR="inst/curated/${FOLDER_NAME}"
         
         echo "Creating directory: $TSV_DIR"
         echo "Folder name: $FOLDER_NAME"
