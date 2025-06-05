@@ -3,7 +3,7 @@ name: Create TSV Files
 on:
   # Run after the DOI curation workflow completes successfully
   workflow_run:
-    workflows: ["curation.yml"]
+    workflows: ["Data for curatedMetagenomicData Curation by DOI"]
     types:
       - completed
     branches: [ main ]
