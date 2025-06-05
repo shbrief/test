@@ -118,7 +118,7 @@ jobs:
         mkdir -p "$TSV_DIR"
         
         # Create folder name for file naming
-        FOLDER_NAME="${AUTHOR_LASTNAME}_${YEAR}"
+        FOLDER_NAME="${{ steps.get-folder-name.outputs.folder_name }}"
         
         # Create sample TSV file
         cat > "$TSV_DIR/${FOLDER_NAME}_sample.tsv" << 'EOF'
@@ -146,7 +146,7 @@ jobs:
     - name: Commit and push changes
       run: |
         git config --local user.email "shbrief@gmail.com"  
-        git config --local user.name "shbrief"              
+        git config --local user.name "shbrief"                
         git add .
         
         # Check if there are changes to commit
