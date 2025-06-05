@@ -19,6 +19,10 @@ on:
 jobs:
   create-tsv-files:
     runs-on: ubuntu-latest
+    # Add permissions for this job
+    permissions:
+      contents: write  # Allow writing to repository
+      issues: read     # Allow reading issues (for metadata)
     # Only run if manually triggered OR if the triggering workflow succeeded
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     
@@ -141,8 +145,8 @@ jobs:
         
     - name: Commit and push changes
       run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
+        git config --local user.email "shbrief@gmail.com"  
+        git config --local user.name "shbrief"              
         git add .
         
         # Check if there are changes to commit
