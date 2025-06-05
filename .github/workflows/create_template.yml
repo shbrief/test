@@ -117,25 +117,16 @@ jobs:
         # Create the directory if it doesn't exist
         mkdir -p "$TSV_DIR"
         
-        # Create folder name for file naming
-        FOLDER_NAME="${{ steps.get-folder-name.outputs.folder_name }}"
-        
         # Create sample TSV file
         cat > "$TSV_DIR/${FOLDER_NAME}_sample.tsv" << 'EOF'
-        Name	Age	City	Country
+        study_name	Age	City	Country
         John Doe	30	New York	USA
-        Jane Smith	25	London	UK
-        Bob Johnson	35	Toronto	Canada
-        Alice Brown	28	Sydney	Australia
         EOF
         
         # Create study TSV file
         cat > "$TSV_DIR/${FOLDER_NAME}_study.tsv" << 'EOF'
-        Product	Price	Category	In Stock
-        Laptop	999.99	Electronics	true
-        Book	19.99	Education	true
-        Coffee Mug	12.50	Kitchen	false
-        Headphones	79.99	Electronics	true
+        Study Title	target_condition
+        Laptop	
         EOF
         
         echo "Created TSV files in $TSV_DIR directory:"
