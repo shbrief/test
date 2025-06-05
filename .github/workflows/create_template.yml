@@ -117,16 +117,138 @@ jobs:
         # Create the directory if it doesn't exist
         mkdir -p "$TSV_DIR"
         
+name: Create TSV Files
+
+on:
+  # Run after the DOI curation workflow completes successfully
+  workflow_run:
+    workflows: ["Data for curatedMetagenomicData Curation by DOI"]
+    types:
+      - completed
+    branches: [ main ]
+  
+  # Keep manual trigger for testing with optional folder name input
+  workflow_dispatch:
+    inputs:
+      folder_name:
+        description: 'Folder name for TSV files (e.g., Smith_2023). Leave empty to auto-detect from issue.'
+        required: false
+        type: string
+
+jobs:
+  create-tsv-files:
+    runs-on: ubuntu-latest
+    # Add permissions for this job
+    permissions:
+      contents: write  # Allow writing to repository
+      issues: read     # Allow reading issues (for metadata)
+    # Only run if manually triggered OR if the triggering workflow succeeded
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Get author and year from issue
+      id: get-metadata
+      uses: actions/github-script@v7
+      with:
+        script: |
+          // Check if folder name was provided manually
+          const manualFolderName = '${{ github.event.inputs.folder_name }}';
+          if (manualFolderName && manualFolderName.trim()) {
+            console.log(`Using manually provided folder name: ${manualFolderName}`);
+            core.setOutput('folder_name', manualFolderName.trim());
+            return;
+          }
+          
+          // Auto-detect from issue (existing logic)
+          console.log('No manual folder name provided, attempting to auto-detect from issue...');
+          
+          // Get the issue that triggered the original workflow
+          const issue = await github.rest.issues.get({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.payload.workflow_run.pull_requests[0]?.number || 
+                         JSON.parse(context.payload.workflow_run.head_commit.message.match(/\#(\d+)/)?.[1] || '1')
+          }).catch(async () => {
+            // Fallback: get the most recent issue if direct lookup fails
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              sort: 'updated',
+              per_page: 1
+            });
+            return issues.data[0] ? { data: issues.data[0] } : null;
+          });
+          
+          if (!issue?.data) {
+            console.log('No issue found, using default values');
+            core.setOutput('folder_name', `Unknown_${new Date().getFullYear()}`);
+            return;
+          }
+          
+          // Look for author and year in issue comments
+          const comments = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: issue.data.number
+          });
+          
+          let author = 'Unknown';
+          let year = new Date().getFullYear(); // Fallback to current year
+          
+          // Check the bot comment for author and year
+          const botComment = comments.data.find(comment => 
+            comment.user.type === 'Bot' && comment.body.includes('### Author')
+          );
+          
+          if (botComment) {
+            const authorMatch = botComment.body.match(/### Author\s*\n([^\n]+)/);
+            const yearMatch = botComment.body.match(/### Year\s*\n(\d{4})/);
+            
+            if (authorMatch && authorMatch[1].trim()) {
+              // Extract last name (assume format "First Last" or just "Last")
+              const fullName = authorMatch[1].trim();
+              const nameParts = fullName.split(' ');
+              author = nameParts[nameParts.length - 1]; // Get last part as last name
+            }
+            
+            if (yearMatch) {
+              year = yearMatch[1]; // Use publication year from DOI
+            }
+          }
+          
+          const folderName = `${author}_${year}`;
+          console.log(`Auto-detected folder name: ${folderName} (author: ${author}, publication year: ${year})`);
+          core.setOutput('folder_name', folderName);
+      
+    - name: Create directory and TSV files
+      run: |
+        # Use the folder name from metadata step
+        FOLDER_NAME="${{ steps.get-metadata.outputs.folder_name }}"
+        TSV_DIR="inst/curated/${FOLDER_NAME}"
+        
+        echo "Creating directory: $TSV_DIR"
+        echo "Folder name: $FOLDER_NAME"
+        
+        # Create the directory if it doesn't exist
+        mkdir -p "$TSV_DIR"
+        
+        # Create folder name for file naming
+        FOLDER_NAME="${{ steps.get-folder-name.outputs.folder_name }}"
+        
         # Create sample TSV file
         cat > "$TSV_DIR/${FOLDER_NAME}_sample.tsv" << 'EOF'
-        study_name	Age	City	Country
-        John Doe	30	New York	USA
+        study_name	sample_id   sequencing_platform subject_id  target_condition    body_site	control	country curator 
+        ${FOLDER_NAME}
         EOF
         
         # Create study TSV file
         cat > "$TSV_DIR/${FOLDER_NAME}_study.tsv" << 'EOF'
         Study Title	target_condition
-        Laptop	
+        ${FOLDER_NAME}	
         EOF
         
         echo "Created TSV files in $TSV_DIR directory:"
