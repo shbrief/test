@@ -119,14 +119,14 @@ jobs:
         
         # Create sample TSV file
         cat > "$TSV_DIR/${FOLDER_NAME}_sample.tsv" << 'EOF'
-        study_name	Age	City	Country
-        John Doe	30	New York	USA
+        study_name	sample_id   sequencing_platform subject_id  target_condition    body_site	control	country curator 
+        ${FOLDER_NAME}
         EOF
         
         # Create study TSV file
         cat > "$TSV_DIR/${FOLDER_NAME}_study.tsv" << 'EOF'
         Study Title	target_condition
-        Laptop	
+        ${FOLDER_NAME}	
         EOF
         
         echo "Created TSV files in $TSV_DIR directory:"
