@@ -88,13 +88,21 @@ jobs:
           if (botComment) {
             console.log('Found bot comment:', botComment.body);
             
-            const authorMatch = botComment.body.match(/### Author\s*\n([^\n]+)/);
-            const yearMatch = botComment.body.match(/### Year\s*\n(\d{4})/);
+            // Try multiple patterns for author
+            const authorMatch = botComment.body.match(/### Author\s*\n([^\n]+)/) || 
+                               botComment.body.match(/\*\*Author\*\*\s*\n([^\n]+)/) ||
+                               botComment.body.match(/Author:\s*([^\n]+)/);
+            
+            // Try multiple patterns for year  
+            const yearMatch = botComment.body.match(/### Year\s*\n(\d{4})/) || 
+                             botComment.body.match(/\*\*Year\*\*\s*\n(\d{4})/) ||
+                             botComment.body.match(/Year:\s*(\d{4})/) ||
+                             botComment.body.match(/(\d{4})/); // Any 4-digit number as last resort
             
             console.log('Author match:', authorMatch);
             console.log('Year match:', yearMatch);
             
-            if (authorMatch && authorMatch[1].trim()) {
+            if (authorMatch && authorMatch[1] && authorMatch[1].trim()) {
               // Extract last name (assume format "First Last" or just "Last")
               const fullName = authorMatch[1].trim();
               const nameParts = fullName.split(' ');
@@ -106,7 +114,7 @@ jobs:
               year = yearMatch[1]; // Use publication year from DOI
               console.log('Extracted year:', year);
             } else {
-              console.log('Year not found in bot comment, using fallback year:', year);
+              console.log('Year not found in bot comment, using empty year');
             }
           } else {
             console.log('No bot comment found, using fallback values');
@@ -150,8 +158,8 @@ jobs:
         
     - name: Commit and push changes
       run: |
-        git config --local user.email "shbrief@gmail.com"  
-        git config --local user.name "shbrief"                
+        git config --local user.email "shbrief@gmail.com"
+        git config --local user.name "shbrief"
         git add .
         
         # Check if there are changes to commit
