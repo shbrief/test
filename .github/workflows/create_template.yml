@@ -66,7 +66,7 @@ jobs:
           
           if (!issue?.data) {
             console.log('No issue found, using default values');
-            core.setOutput('folder_name', `Unknown_${new Date().getFullYear()}`);
+            core.setOutput('folder_name', 'Unknown');
             return;
           }
           
@@ -78,7 +78,7 @@ jobs:
           });
           
           let author = 'Unknown';
-          let year = new Date().getFullYear(); // Fallback to current year
+          let year = ''; // Use empty string instead of fallback year
           
           // Check the bot comment for author and year
           const botComment = comments.data.find(comment => 
@@ -86,23 +86,34 @@ jobs:
           );
           
           if (botComment) {
+            console.log('Found bot comment:', botComment.body);
+            
             const authorMatch = botComment.body.match(/### Author\s*\n([^\n]+)/);
             const yearMatch = botComment.body.match(/### Year\s*\n(\d{4})/);
+            
+            console.log('Author match:', authorMatch);
+            console.log('Year match:', yearMatch);
             
             if (authorMatch && authorMatch[1].trim()) {
               // Extract last name (assume format "First Last" or just "Last")
               const fullName = authorMatch[1].trim();
               const nameParts = fullName.split(' ');
               author = nameParts[nameParts.length - 1]; // Get last part as last name
+              console.log('Extracted author:', author);
             }
             
-            if (yearMatch) {
+            if (yearMatch && yearMatch[1]) {
               year = yearMatch[1]; // Use publication year from DOI
+              console.log('Extracted year:', year);
+            } else {
+              console.log('Year not found in bot comment, using fallback year:', year);
             }
+          } else {
+            console.log('No bot comment found, using fallback values');
           }
           
-          const folderName = `${author}_${year}`;
-          console.log(`Auto-detected folder name: ${folderName} (author: ${author}, publication year: ${year})`);
+          const folderName = year ? `${author}_${year}` : author;
+          console.log(`Auto-detected folder name: ${folderName} (author: ${author}, publication year: ${year || 'not found'})`);
           core.setOutput('folder_name', folderName);
       
     - name: Create directory and TSV files
