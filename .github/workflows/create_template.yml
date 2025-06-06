@@ -66,7 +66,7 @@ jobs:
           
           if (!issue?.data) {
             console.log('No issue found, using default values');
-            core.setOutput('folder_name', 'Unknown');
+            core.setOutput('folder_name', `Unknown_${new Date().getFullYear()}`);
             return;
           }
           
@@ -78,7 +78,7 @@ jobs:
           });
           
           let author = 'Unknown';
-          let year = ''; // Use empty string instead of fallback year
+          let year = new Date().getFullYear();
           
           // Check the bot comment for author and year
           const botComment = comments.data.find(comment => 
@@ -86,42 +86,23 @@ jobs:
           );
           
           if (botComment) {
-            console.log('Found bot comment:', botComment.body);
+            const authorMatch = botComment.body.match(/### Author\s*\n([^\n]+)/);
+            const yearMatch = botComment.body.match(/### Year\s*\n(\d{4})/);
             
-            // Try multiple patterns for author
-            const authorMatch = botComment.body.match(/### Author\s*\n([^\n]+)/) || 
-                               botComment.body.match(/\*\*Author\*\*\s*\n([^\n]+)/) ||
-                               botComment.body.match(/Author:\s*([^\n]+)/);
-            
-            // Try multiple patterns for year  
-            const yearMatch = botComment.body.match(/### Year\s*\n(\d{4})/) || 
-                             botComment.body.match(/\*\*Year\*\*\s*\n(\d{4})/) ||
-                             botComment.body.match(/Year:\s*(\d{4})/) ||
-                             botComment.body.match(/(\d{4})/); // Any 4-digit number as last resort
-            
-            console.log('Author match:', authorMatch);
-            console.log('Year match:', yearMatch);
-            
-            if (authorMatch && authorMatch[1] && authorMatch[1].trim()) {
+            if (authorMatch && authorMatch[1].trim()) {
               // Extract last name (assume format "First Last" or just "Last")
               const fullName = authorMatch[1].trim();
               const nameParts = fullName.split(' ');
               author = nameParts[nameParts.length - 1]; // Get last part as last name
-              console.log('Extracted author:', author);
             }
             
-            if (yearMatch && yearMatch[1]) {
-              year = yearMatch[1]; // Use publication year from DOI
-              console.log('Extracted year:', year);
-            } else {
-              console.log('Year not found in bot comment, using empty year');
+            if (yearMatch) {
+              year = yearMatch[1];
             }
-          } else {
-            console.log('No bot comment found, using fallback values');
           }
           
-          const folderName = year ? `${author}_${year}` : author;
-          console.log(`Auto-detected folder name: ${folderName} (author: ${author}, publication year: ${year || 'not found'})`);
+          const folderName = `${author}_${year}`;
+          console.log(`Auto-detected folder name: ${folderName}`);
           core.setOutput('folder_name', folderName);
       
     - name: Create directory and TSV files
@@ -136,19 +117,16 @@ jobs:
         # Create the directory if it doesn't exist
         mkdir -p "$TSV_DIR"
         
-        # Create folder name for file naming
-        FOLDER_NAME="${{ steps.get-folder-name.outputs.folder_name }}"
-        
         # Create sample TSV file
         cat > "$TSV_DIR/${FOLDER_NAME}_sample.tsv" << 'EOF'
-        study_name	sample_id   sequencing_platform subject_id  target_condition    body_site	control	country curator 
-        ${FOLDER_NAME}
+        study_name	Age	City	Country
+        John Doe	30	New York	USA
         EOF
         
         # Create study TSV file
         cat > "$TSV_DIR/${FOLDER_NAME}_study.tsv" << 'EOF'
         Study Title	target_condition
-        ${FOLDER_NAME}	
+        Laptop	
         EOF
         
         echo "Created TSV files in $TSV_DIR directory:"
@@ -158,8 +136,8 @@ jobs:
         
     - name: Commit and push changes
       run: |
-        git config --local user.email "shbrief@gmail.com"
-        git config --local user.name "shbrief"
+        git config --local user.email "shbrief@gmail.com"  
+        git config --local user.name "shbrief"                
         git add .
         
         # Check if there are changes to commit
